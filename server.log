@@ -204,3 +204,39 @@ Import trace:
  GET /notes 200 in 92ms
  ✓ Compiled /analytics in 31ms
  GET /analytics 200 in 96ms
+ ✓ Compiled in 338ms
+ GET / 200 in 234ms
+ ✓ Compiled in 97ms
+ ✓ Compiled / in 45ms
+ GET / 200 in 263ms
+ GET / 200 in 86ms
+ GET / 200 in 100ms
+ GET / 200 in 116ms
+ GET / 200 in 84ms
+ GET / 200 in 99ms
+ GET / 200 in 92ms
+ ✓ Compiled in 525ms
+ ⨯ [Error: Invalid <Link> with <a> child. Please remove <a> or use <Link legacyBehavior>.
+Learn more: https://nextjs.org/docs/messages/invalid-new-link-with-extra-anchor] {
+  digest: '3089928759'
+}
+ GET / 500 in 584ms
+ GET /favicon.ico 200 in 279ms
+ ✓ Compiled in 162ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 617ms
+ GET /favicon.ico?favicon.bf3c9292.ico 200 in 271ms
+ GET / 200 in 195ms
+ ✓ Compiled /contacts in 37ms
+ GET /contacts 200 in 218ms
+ ✓ Compiled /deals in 41ms
+ GET /deals 200 in 241ms
+ ✓ Compiled /tasks in 36ms
+ GET /tasks 200 in 217ms
+ ✓ Compiled /notes in 49ms
+ GET /notes 200 in 259ms
+ ✓ Compiled /calls in 54ms
+ GET /calls 200 in 253ms
+ ✓ Compiled /analytics in 64ms
+ GET /analytics 200 in 275ms
+ GET / 200 in 112ms

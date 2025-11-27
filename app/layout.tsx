@@ -17,10 +17,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
+      <body className={inter.className} style={{ margin: 0, padding: 0 }}>
+        <div style={{ display: 'flex', minHeight: '100vh' }}>
           <Sidebar />
-          <main className="flex-1 overflow-auto">
+          <main className="main-content">
             {children}
           </main>
         </div>
