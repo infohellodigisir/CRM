@@ -2,49 +2,95 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { TrendingUp, Users, Briefcase, Phone } from 'lucide-react';
+import { TrendingUp, Users, BarChart3, Phone, CheckSquare, FileText } from 'lucide-react';
 
-interface Deal {
-  id: string;
-  title: string;
-  value: number;
-  stage: string;
+interface Analytics {
+  totalRevenue: number;
+  pipelineValue: number;
+  avgDealSize: number;
+  conversionRate: number;
+  totalContacts: number;
+  totalDeals: number;
+  totalCalls: number;
+  totalTasks: number;
+  totalNotes: number;
+  dealsByStage: { [key: string]: number };
+  callsByType: { [key: string]: number };
 }
 
-interface Contact {
-  id: string;
-  first_name: string;
-  last_name: string;
-}
-
-interface CallLog {
-  id: string;
-  duration: number;
-}
-
-export default function AnalyticsPage() {
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [calls, setCalls] = useState<CallLog[]>([]);
+export default function Analytics() {
+  const [analytics, setAnalytics] = useState<Analytics>({
+    totalRevenue: 0,
+    pipelineValue: 0,
+    avgDealSize: 0,
+    conversionRate: 0,
+    totalContacts: 0,
+    totalDeals: 0,
+    totalCalls: 0,
+    totalTasks: 0,
+    totalNotes: 0,
+    dealsByStage: {},
+    callsByType: {},
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchData();
+    fetchAnalytics();
   }, []);
 
-  const fetchData = async () => {
+  const fetchAnalytics = async () => {
     try {
       setLoading(true);
 
-      const { data: dealsData } = await supabase.from('deals').select('*');
-      const { data: contactsData } = await supabase.from('contacts').select('*');
-      const { data: callsData } = await supabase.from('call_logs').select('*');
+      // Fetch all data
+      const [contactsRes, dealsRes, callsRes, tasksRes, notesRes] = await Promise.all([
+        supabase.from('contacts').select('*', { count: 'exact' }),
+        supabase.from('deals').select('*', { count: 'exact' }),
+        supabase.from('call_logs').select('*', { count: 'exact' }),
+        supabase.from('tasks').select('*', { count: 'exact' }),
+        supabase.from('notes').select('*', { count: 'exact' }),
+      ]);
 
-      setDeals(dealsData || []);
-      setContacts(contactsData || []);
-      setCalls(callsData || []);
+      const contacts = contactsRes.data || [];
+      const deals = dealsRes.data || [];
+      const calls = callsRes.data || [];
+      const tasks = tasksRes.data || [];
+      const notes = notesRes.data || [];
+
+      // Calculate metrics
+      const totalRevenue = deals.reduce((sum, deal) => sum + (deal.value || 0), 0);
+      const pipelineValue = deals.reduce((sum, deal) => sum + (deal.value || 0), 0);
+      const avgDealSize = deals.length > 0 ? totalRevenue / deals.length : 0;
+      const wonDeals = deals.filter((d) => d.stage === 'Won').length;
+      const conversionRate = deals.length > 0 ? (wonDeals / deals.length) * 100 : 0;
+
+      // Deals by stage
+      const dealsByStage: { [key: string]: number } = {};
+      deals.forEach((deal) => {
+        dealsByStage[deal.stage] = (dealsByStage[deal.stage] || 0) + 1;
+      });
+
+      // Calls by type
+      const callsByType: { [key: string]: number } = {};
+      calls.forEach((call) => {
+        callsByType[call.call_type] = (callsByType[call.call_type] || 0) + 1;
+      });
+
+      setAnalytics({
+        totalRevenue,
+        pipelineValue,
+        avgDealSize,
+        conversionRate,
+        totalContacts: contactsRes.count || 0,
+        totalDeals: dealsRes.count || 0,
+        totalCalls: callsRes.count || 0,
+        totalTasks: tasksRes.count || 0,
+        totalNotes: notesRes.count || 0,
+        dealsByStage,
+        callsByType,
+      });
     } catch (error) {
-      console.error('Error fetching analytics data:', error);
+      console.error('Error fetching analytics:', error);
     } finally {
       setLoading(false);
     }
@@ -54,195 +100,202 @@ export default function AnalyticsPage() {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(value);
   };
 
-  const totalRevenue = deals
-    .filter(d => d.stage === 'Won')
-    .reduce((sum, d) => sum + (d.value || 0), 0);
-
-  const pipelineValue = deals
-    .filter(d => d.stage !== 'Won' && d.stage !== 'Lost')
-    .reduce((sum, d) => sum + (d.value || 0), 0);
-
-  const avgDealSize = deals.length > 0
-    ? deals.reduce((sum, d) => sum + (d.value || 0), 0) / deals.length
-    : 0;
-
-  const conversionRate = deals.length > 0
-    ? ((deals.filter(d => d.stage === 'Won').length / deals.length) * 100).toFixed(1)
-    : 0;
-
-  const totalCallDuration = calls.reduce((sum, c) => sum + (c.duration || 0), 0);
-  const avgCallDuration = calls.length > 0 ? Math.round(totalCallDuration / calls.length) : 0;
-
-  const dealsByStage = {
-    Lead: deals.filter(d => d.stage === 'Lead').length,
-    Qualified: deals.filter(d => d.stage === 'Qualified').length,
-    Proposal: deals.filter(d => d.stage === 'Proposal').length,
-    Negotiation: deals.filter(d => d.stage === 'Negotiation').length,
-    Won: deals.filter(d => d.stage === 'Won').length,
-    Lost: deals.filter(d => d.stage === 'Lost').length,
-  };
+  const MetricCard = ({ icon: Icon, label, value, subtext, color }: any) => (
+    <div className="frappe-card p-6">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <p className="frappe-metric-label">{label}</p>
+          <p className="frappe-metric">{value}</p>
+          {subtext && <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">{subtext}</p>}
+        </div>
+        <div className={`p-3 rounded-lg ${color}`}>
+          <Icon className="w-6 h-6" />
+        </div>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics</h1>
-        <p className="text-gray-600 dark:text-gray-400">Track your sales performance and metrics</p>
-      </div>
-
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Total Revenue */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between items-start">
+      <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{formatCurrency(totalRevenue)}</p>
-              <p className="text-green-600 text-sm mt-2">↑ 18% from last month</p>
+              <h1 className="frappe-header">Analytics</h1>
+              <p className="frappe-subheader">Track your sales performance and metrics</p>
             </div>
-            <div className="bg-green-100 dark:bg-green-900 p-3 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-        </div>
-
-        {/* Pipeline Value */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Pipeline Value</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{formatCurrency(pipelineValue)}</p>
-              <p className="text-blue-600 text-sm mt-2">↑ 12% from last month</p>
-            </div>
-            <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-lg">
-              <Briefcase className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
-          </div>
-        </div>
-
-        {/* Avg Deal Size */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Avg Deal Size</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{formatCurrency(avgDealSize)}</p>
-              <p className="text-purple-600 text-sm mt-2">↑ 5% from last month</p>
-            </div>
-            <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-lg">
-              <Briefcase className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-            </div>
-          </div>
-        </div>
-
-        {/* Conversion Rate */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Conversion Rate</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{conversionRate}%</p>
-              <p className="text-orange-600 text-sm mt-2">↑ 2.5% from last month</p>
-            </div>
-            <div className="bg-orange-100 dark:bg-orange-900 p-3 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-            </div>
+            <button
+              onClick={fetchAnalytics}
+              className="frappe-button-primary"
+            >
+              Refresh
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Sales Pipeline & Call Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sales Pipeline */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Sales Pipeline</h2>
-          <div className="space-y-4">
-            {Object.entries(dealsByStage).map(([stage, count]) => (
-              <div key={stage}>
-                <div className="flex justify-between items-center mb-2">
-                  <p className="text-gray-700 dark:text-gray-300 font-medium">{stage}</p>
-                  <p className="text-gray-900 dark:text-white font-bold">{count}</p>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading analytics...</p>
+          </div>
+        ) : (
+          <>
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <MetricCard
+                icon={TrendingUp}
+                label="Total Revenue"
+                value={formatCurrency(analytics.totalRevenue)}
+                subtext="From all deals"
+                color="bg-green-100 dark:bg-green-900"
+              />
+              <MetricCard
+                icon={BarChart3}
+                label="Pipeline Value"
+                value={formatCurrency(analytics.pipelineValue)}
+                subtext="Current pipeline"
+                color="bg-blue-100 dark:bg-blue-900"
+              />
+              <MetricCard
+                icon={TrendingUp}
+                label="Avg Deal Size"
+                value={formatCurrency(analytics.avgDealSize)}
+                subtext="Average per deal"
+                color="bg-purple-100 dark:bg-purple-900"
+              />
+              <MetricCard
+                icon={BarChart3}
+                label="Conversion Rate"
+                value={`${analytics.conversionRate.toFixed(1)}%`}
+                subtext="Won vs Total"
+                color="bg-orange-100 dark:bg-orange-900"
+              />
+            </div>
+
+            {/* Secondary Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <MetricCard
+                icon={Users}
+                label="Total Contacts"
+                value={analytics.totalContacts}
+                subtext="Active contacts"
+                color="bg-blue-100 dark:bg-blue-900"
+              />
+              <MetricCard
+                icon={BarChart3}
+                label="Total Deals"
+                value={analytics.totalDeals}
+                subtext="All opportunities"
+                color="bg-green-100 dark:bg-green-900"
+              />
+              <MetricCard
+                icon={Phone}
+                label="Total Calls"
+                value={analytics.totalCalls}
+                subtext="Logged calls"
+                color="bg-purple-100 dark:bg-purple-900"
+              />
+            </div>
+
+            {/* Sales Pipeline */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <div className="frappe-card p-6">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Sales Pipeline</h2>
+                <div className="space-y-4">
+                  {Object.entries(analytics.dealsByStage).length > 0 ? (
+                    Object.entries(analytics.dealsByStage).map(([stage, count]) => (
+                      <div key={stage}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{stage}</span>
+                          <span className="text-sm font-bold text-gray-900 dark:text-white">{count}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div
+                            className="bg-green-600 dark:bg-green-500 h-2 rounded-full"
+                            style={{
+                              width: `${(count / Math.max(...Object.values(analytics.dealsByStage))) * 100}%`,
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-600 dark:text-gray-400 text-center py-8">No deals yet</p>
+                  )}
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full"
-                    style={{ width: `${deals.length > 0 ? (count / Math.max(...Object.values(dealsByStage))) * 100 : 0}%` }}
-                  ></div>
+              </div>
+
+              {/* Call Statistics */}
+              <div className="frappe-card p-6">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Call Statistics</h2>
+                <div className="space-y-4">
+                  {Object.entries(analytics.callsByType).length > 0 ? (
+                    Object.entries(analytics.callsByType).map(([type, count]) => (
+                      <div key={type}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">
+                            {type} Calls
+                          </span>
+                          <span className="text-sm font-bold text-gray-900 dark:text-white">{count}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div
+                            className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full"
+                            style={{
+                              width: `${(count / Math.max(...Object.values(analytics.callsByType))) * 100}%`,
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-600 dark:text-gray-400 text-center py-8">No calls yet</p>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Call Statistics */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Call Statistics</h2>
-          <div className="space-y-6">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Calls</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{calls.length}</p>
-              </div>
             </div>
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Duration</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {Math.floor(totalCallDuration / 60)}m
+
+            {/* Additional Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="frappe-card p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Active Tasks</h3>
+                  <CheckSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">{analytics.totalTasks}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">Tasks pending</p>
+              </div>
+
+              <div className="frappe-card p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Notes</h3>
+                  <FileText className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">{analytics.totalNotes}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">Notes created</p>
+              </div>
+
+              <div className="frappe-card p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Performance</h3>
+                  <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+                </div>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {((analytics.totalDeals / Math.max(analytics.totalContacts, 1)) * 100).toFixed(1)}%
                 </p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">Deal conversion ratio</p>
               </div>
             </div>
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Avg Duration</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {Math.floor(avgCallDuration / 60)}m {avgCallDuration % 60}s
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-4">
-            <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-lg">
-              <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">Total Contacts</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{contacts.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-4">
-            <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-lg">
-              <Briefcase className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">Total Deals</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{deals.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-4">
-            <div className="bg-green-100 dark:bg-green-900 p-3 rounded-lg">
-              <Phone className="w-6 h-6 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">Total Calls</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{calls.length}</p>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

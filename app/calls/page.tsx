@@ -2,27 +2,28 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Phone, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Phone, Clock } from 'lucide-react';
 
 interface CallLog {
   id: string;
   contact_id: string;
-  phone_number: string;
+  contact_name: string;
   duration: number;
   call_type: string;
-  status: string;
-  recording_url: string;
+  notes: string;
   created_at: string;
 }
 
-export default function CallLogsPage() {
+export default function Calls() {
   const [calls, setCalls] = useState<CallLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    phone_number: '',
-    call_type: 'outbound',
-    duration: '',
+    contact_name: '',
+    contact_id: '',
+    duration: 0,
+    call_type: 'inbound',
+    notes: '',
   });
 
   useEffect(() => {
@@ -51,18 +52,16 @@ export default function CallLogsPage() {
     try {
       const { error } = await supabase
         .from('call_logs')
-        .insert([{
-          ...formData,
-          duration: parseInt(formData.duration),
-          status: 'completed',
-        }]);
+        .insert([formData]);
 
       if (error) throw error;
-      
+
       setFormData({
-        phone_number: '',
-        call_type: 'outbound',
-        duration: '',
+        contact_name: '',
+        contact_id: '',
+        duration: 0,
+        call_type: 'inbound',
+        notes: '',
       });
       setShowForm(false);
       fetchCalls();
@@ -72,6 +71,8 @@ export default function CallLogsPage() {
   };
 
   const handleDeleteCall = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this call log?')) return;
+
     try {
       const { error } = await supabase
         .from('call_logs')
@@ -86,143 +87,222 @@ export default function CallLogsPage() {
   };
 
   const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m ${secs}s`;
   };
 
-  const totalCalls = calls.length;
-  const totalDuration = calls.reduce((sum, call) => sum + (call.duration || 0), 0);
-  const avgDuration = totalCalls > 0 ? Math.round(totalDuration / totalCalls) : 0;
+  const totalDuration = calls.reduce((sum, call) => sum + call.duration, 0);
+  const avgDuration = calls.length > 0 ? Math.round(totalDuration / calls.length) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Call Logs</h1>
-          <p className="text-gray-600 dark:text-gray-400">Track all your calls and interactions</p>
-        </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" /> Log Call
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Calls</p>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{totalCalls}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Duration</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{formatDuration(totalDuration)}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Avg Duration</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{formatDuration(avgDuration)}</p>
-        </div>
-      </div>
-
-      {/* Add Call Form */}
-      {showForm && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Log New Call</h2>
-          <form onSubmit={handleAddCall} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="tel"
-              placeholder="Phone Number"
-              value={formData.phone_number}
-              onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              required
-            />
-            <select
-              value={formData.call_type}
-              onChange={(e) => setFormData({ ...formData, call_type: e.target.value })}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            >
-              <option value="inbound">Inbound</option>
-              <option value="outbound">Outbound</option>
-            </select>
-            <input
-              type="number"
-              placeholder="Duration (seconds)"
-              value={formData.duration}
-              onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              required
-            />
+      <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="frappe-header">Call Logs</h1>
+              <p className="frappe-subheader">Track and manage customer calls</p>
+            </div>
             <button
-              type="submit"
-              className="md:col-span-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
+              onClick={() => setShowForm(!showForm)}
+              className="frappe-button-primary flex items-center gap-2"
             >
-              Save Call
+              <Plus className="w-4 h-4" />
+              Log Call
             </button>
-          </form>
-        </div>
-      )}
-
-      {/* Calls Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        {loading ? (
-          <div className="p-6 text-center text-gray-600 dark:text-gray-400">Loading calls...</div>
-        ) : calls.length === 0 ? (
-          <div className="p-6 text-center text-gray-600 dark:text-gray-400">
-            No calls logged yet. Start logging calls!
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Phone</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Type</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Duration</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Status</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Date</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-                {calls.map((call) => (
-                  <tr key={call.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">{call.phone_number}</td>
-                    <td className="px-6 py-4 text-sm">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        call.call_type === 'inbound' 
-                          ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' 
-                          : 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
-                      }`}>
-                        {call.call_type === 'inbound' ? '📥 Inbound' : '📤 Outbound'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{formatDuration(call.duration)}</td>
-                    <td className="px-6 py-4 text-sm">
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
-                        ✓ {call.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {new Date(call.created_at).toLocaleDateString('en-IN')}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <button
-                        onClick={() => handleDeleteCall(call.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+          {/* Call Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="frappe-card p-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Calls</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{calls.length}</p>
+            </div>
+            <div className="frappe-card p-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Total Duration</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatDuration(totalDuration)}</p>
+            </div>
+            <div className="frappe-card p-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Avg Duration</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatDuration(avgDuration)}</p>
+            </div>
+            <div className="frappe-card p-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Inbound Calls</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {calls.filter((c) => c.call_type === 'inbound').length}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Add Call Form */}
+        {showForm && (
+          <div className="frappe-card p-6 mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Log New Call</h2>
+            <form onSubmit={handleAddCall} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-group">
+                <label className="form-label">Contact Name *</label>
+                <input
+                  type="text"
+                  required
+                  className="frappe-input"
+                  placeholder="Contact name"
+                  value={formData.contact_name}
+                  onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Call Type</label>
+                <select
+                  className="frappe-input"
+                  value={formData.call_type}
+                  onChange={(e) => setFormData({ ...formData, call_type: e.target.value })}
+                >
+                  <option value="inbound">Inbound</option>
+                  <option value="outbound">Outbound</option>
+                  <option value="missed">Missed</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Duration (seconds) *</label>
+                <input
+                  type="number"
+                  required
+                  className="frappe-input"
+                  placeholder="0"
+                  value={formData.duration}
+                  onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Contact ID</label>
+                <input
+                  type="text"
+                  className="frappe-input"
+                  placeholder="Contact ID (optional)"
+                  value={formData.contact_id}
+                  onChange={(e) => setFormData({ ...formData, contact_id: e.target.value })}
+                />
+              </div>
+
+              <div className="md:col-span-2 form-group">
+                <label className="form-label">Notes</label>
+                <textarea
+                  className="frappe-input"
+                  placeholder="Call notes..."
+                  rows={3}
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                />
+              </div>
+
+              <div className="md:col-span-2 flex gap-3">
+                <button type="submit" className="frappe-button-primary flex-1">
+                  Save Call
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="frappe-button-secondary flex-1"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         )}
+
+        {/* Call Logs List */}
+        <div className="frappe-card overflow-hidden">
+          {loading ? (
+            <div className="p-8 text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">Loading call logs...</p>
+            </div>
+          ) : calls.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="frappe-table">
+                <thead>
+                  <tr>
+                    <th>Contact</th>
+                    <th>Type</th>
+                    <th>Duration</th>
+                    <th>Notes</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {calls.map((call) => (
+                    <tr key={call.id}>
+                      <td className="font-medium">{call.contact_name}</td>
+                      <td>
+                        <span
+                          className={`badge ${
+                            call.call_type === 'inbound'
+                              ? 'badge-success'
+                              : call.call_type === 'outbound'
+                              ? 'badge-info'
+                              : 'badge-warning'
+                          }`}
+                        >
+                          {call.call_type}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                          {formatDuration(call.duration)}
+                        </div>
+                      </td>
+                      <td className="text-gray-600 dark:text-gray-400 max-w-xs truncate">{call.notes || '-'}</td>
+                      <td className="text-sm text-gray-600 dark:text-gray-400">
+                        {new Date(call.created_at).toLocaleDateString('en-IN')}
+                      </td>
+                      <td>
+                        <div className="flex gap-2">
+                          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                            <Edit2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCall(call.id)}
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-12 text-center">
+              <Phone className="w-16 h-16 text-gray-400 dark:text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-600 dark:text-gray-400 mb-4">No call logs yet. Start logging calls to track customer interactions.</p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="frappe-button-primary"
+              >
+                Log First Call
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

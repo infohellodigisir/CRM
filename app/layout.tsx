@@ -1,49 +1,30 @@
-/**
- * Root Layout Component
- * Provides the main structure for the entire application
- * Includes metadata, theme configuration, and global providers
- */
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import Sidebar from '@/components/Sidebar';
 
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: {
-    default: 'CRM Pro - Customer Relationship Management',
-    template: '%s | CRM Pro',
-  },
-  description: 'Professional CRM solution with calling integration, contact management, and deal tracking',
-  keywords: ['CRM', 'Sales', 'Contact Management', 'Deal Tracking', 'Calling'],
-  openGraph: {
-    type: 'website',
-    locale: 'en_US',
-    url: 'http://localhost:3000',
-    siteName: 'CRM Pro',
-    title: 'CRM Pro - Customer Relationship Management',
-    description: 'Professional CRM solution with calling integration',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'CRM Pro',
-    description: 'Professional CRM solution with calling integration',
-  },
-}
+  title: 'CRM Pro - Customer Relationship Management',
+  description: 'Professional CRM system for managing sales, contacts, and customer relationships',
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
-          {children}
+        <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
+          <Sidebar />
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
         </div>
       </body>
     </html>
-  )
+  );
 }
