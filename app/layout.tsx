@@ -17,13 +17,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className} style={{ margin: 0, padding: 0 }}>
-        <div style={{ display: 'flex', minHeight: '100vh' }}>
-          <Sidebar />
-          <main className="main-content">
-            {children}
-          </main>
-        </div>
+      <body className={inter.className}>
+        <Sidebar />
+        <main className="main-content">
+          {children}
+        </main>
       </body>
     </html>
   );

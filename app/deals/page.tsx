@@ -2,32 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Trash2, Edit2, TrendingUp } from 'lucide-react';
+import { Briefcase, Plus, TrendingUp } from 'lucide-react';
 
-interface Deal {
-  id: string;
-  title: string;
-  contact_id: string;
-  value: number;
-  stage: string;
-  probability: number;
-  expected_close_date: string;
-  created_at: string;
-}
-
-const STAGES = ['Lead', 'Qualified', 'Proposal', 'Negotiation', 'Won', 'Lost'];
-
-export default function Deals() {
-  const [deals, setDeals] = useState<Deal[]>([]);
+export default function DealsPage() {
+  const [deals, setDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
+    amount: '',
+    status: 'lead',
     contact_id: '',
-    value: 0,
-    stage: 'Lead',
-    probability: 50,
-    expected_close_date: '',
   });
 
   useEffect(() => {
@@ -35,13 +20,9 @@ export default function Deals() {
   }, []);
 
   const fetchDeals = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('deals')
-        .select('*')
-        .order('created_at', { ascending: false });
-
+      const { data, error } = await supabase.from('deals').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       setDeals(data || []);
     } catch (error) {
@@ -54,20 +35,14 @@ export default function Deals() {
   const handleAddDeal = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { error } = await supabase
-        .from('deals')
-        .insert([formData]);
-
+      const { error } = await supabase.from('deals').insert([
+        {
+          ...formData,
+          amount: parseFloat(formData.amount),
+        },
+      ]);
       if (error) throw error;
-
-      setFormData({
-        title: '',
-        contact_id: '',
-        value: 0,
-        stage: 'Lead',
-        probability: 50,
-        expected_close_date: '',
-      });
+      setFormData({ title: '', amount: '', status: 'lead', contact_id: '' });
       setShowForm(false);
       fetchDeals();
     } catch (error) {
@@ -75,244 +50,184 @@ export default function Deals() {
     }
   };
 
-  const handleDeleteDeal = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this deal?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('deals')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      fetchDeals();
-    } catch (error) {
-      console.error('Error deleting deal:', error);
-    }
+  const statuses = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
+  const statusColors: { [key: string]: string } = {
+    lead: '#3498db',
+    qualified: '#9b59b6',
+    proposal: '#f39c12',
+    negotiation: '#e74c3c',
+    won: '#27ae60',
+    lost: '#95a5a6',
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const getStageColor = (stage: string) => {
-    const colors: { [key: string]: string } = {
-      Lead: 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200',
-      Qualified: 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200',
-      Proposal: 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200',
-      Negotiation: 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200',
-      Won: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200',
-      Lost: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200',
-    };
-    return colors[stage] || 'bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200';
-  };
-
-  const dealsByStage = STAGES.map((stage) => ({
-    stage,
-    deals: deals.filter((d) => d.stage === stage),
-    total: deals
-      .filter((d) => d.stage === stage)
-      .reduce((sum, d) => sum + d.value, 0),
+  const dealsByStatus = statuses.map((status) => ({
+    status,
+    deals: deals.filter((d) => d.status === status),
+    total: deals.filter((d) => d.status === status).reduce((sum, d) => sum + (d.amount || 0), 0),
   }));
 
-  const totalPipelineValue = deals.reduce((sum, d) => sum + d.value, 0);
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="frappe-header">Sales Pipeline</h1>
-              <p className="frappe-subheader">Manage your deals and opportunities</p>
-            </div>
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="frappe-button-primary flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Deal
-            </button>
-          </div>
-
-          {/* Pipeline Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="frappe-card p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Pipeline Value</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalPipelineValue)}</p>
-            </div>
-            <div className="frappe-card p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Total Deals</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{deals.length}</p>
-            </div>
-            <div className="frappe-card p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Average Deal Size</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {deals.length > 0 ? formatCurrency(totalPipelineValue / deals.length) : '₹0'}
-              </p>
-            </div>
-          </div>
+    <div>
+      {/* Page Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Sales Pipeline</h1>
+          <p className="page-subtitle">Track your deals and opportunities</p>
+        </div>
+        <div className="page-actions">
+          <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+            <Plus size={18} />
+            Add Deal
+          </button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Add Deal Form */}
-        {showForm && (
-          <div className="frappe-card p-6 mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Add New Deal</h2>
-            <form onSubmit={handleAddDeal} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Metrics */}
+      <div className="grid grid-3" style={{ marginBottom: '30px' }}>
+        <div className="metric-card">
+          <TrendingUp size={32} color="#ff8c00" />
+          <div className="metric-value">₹{(deals.reduce((sum, d) => sum + (d.amount || 0), 0) / 100000).toFixed(1)}L</div>
+          <div className="metric-label">Total Pipeline Value</div>
+        </div>
+        <div className="metric-card">
+          <Briefcase size={32} color="#ff8c00" />
+          <div className="metric-value">{deals.length}</div>
+          <div className="metric-label">Total Deals</div>
+        </div>
+        <div className="metric-card">
+          <TrendingUp size={32} color="#ff8c00" />
+          <div className="metric-value">₹{deals.length > 0 ? (deals.reduce((sum, d) => sum + (d.amount || 0), 0) / deals.length / 100000).toFixed(1) : '0'}L</div>
+          <div className="metric-label">Average Deal Size</div>
+        </div>
+      </div>
+
+      {/* Add Deal Form */}
+      {showForm && (
+        <div className="card" style={{ marginBottom: '30px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '20px', color: '#1a1a2e' }}>
+            Add New Deal
+          </h3>
+          <form onSubmit={handleAddDeal}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
               <div className="form-group">
                 <label className="form-label">Deal Title *</label>
                 <input
                   type="text"
-                  required
-                  className="frappe-input"
-                  placeholder="Deal name"
+                  className="form-input"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  required
                 />
               </div>
-
               <div className="form-group">
-                <label className="form-label">Deal Value (₹) *</label>
+                <label className="form-label">Amount (₹) *</label>
                 <input
                   type="number"
+                  className="form-input"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                   required
-                  className="frappe-input"
-                  placeholder="0"
-                  value={formData.value}
-                  onChange={(e) => setFormData({ ...formData, value: parseFloat(e.target.value) })}
                 />
               </div>
-
               <div className="form-group">
-                <label className="form-label">Stage</label>
+                <label className="form-label">Status</label>
                 <select
-                  className="frappe-input"
-                  value={formData.stage}
-                  onChange={(e) => setFormData({ ...formData, stage: e.target.value })}
+                  className="form-input"
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                 >
-                  {STAGES.map((stage) => (
-                    <option key={stage} value={stage}>
-                      {stage}
+                  {statuses.map((s) => (
+                    <option key={s} value={s}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
                     </option>
                   ))}
                 </select>
               </div>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+              <button type="submit" className="btn btn-primary">
+                Save Deal
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
-              <div className="form-group">
-                <label className="form-label">Probability (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  className="frappe-input"
-                  value={formData.probability}
-                  onChange={(e) => setFormData({ ...formData, probability: parseInt(e.target.value) })}
-                />
+      {/* Deals by Status */}
+      {loading ? (
+        <div className="empty-state">
+          <div className="loading" style={{ margin: '0 auto' }}></div>
+          <p style={{ marginTop: '16px', color: '#7f8c8d' }}>Loading deals...</p>
+        </div>
+      ) : deals.length === 0 ? (
+        <div className="empty-state">
+          <Briefcase size={64} style={{ opacity: 0.3, margin: '0 auto' }} />
+          <h3 className="empty-state-title">No deals yet</h3>
+          <p className="empty-state-text">Create your first deal to get started</p>
+          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+            <Plus size={18} />
+            Add First Deal
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-2">
+          {dealsByStatus.map((stage) => (
+            <div key={stage.status} className="card">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div
+                  style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    backgroundColor: statusColors[stage.status],
+                  }}
+                ></div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1a1a2e', flex: 1 }}>
+                  {stage.status.charAt(0).toUpperCase() + stage.status.slice(1)}
+                </h3>
+                <span className="badge badge-info">{stage.deals.length}</span>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Expected Close Date</label>
-                <input
-                  type="date"
-                  className="frappe-input"
-                  value={formData.expected_close_date}
-                  onChange={(e) => setFormData({ ...formData, expected_close_date: e.target.value })}
-                />
+              <div style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid #e8e8e8' }}>
+                <p style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '4px' }}>Total Value</p>
+                <p style={{ fontSize: '20px', fontWeight: '700', color: '#ff8c00' }}>
+                  ₹{(stage.total / 100000).toFixed(1)}L
+                </p>
               </div>
 
-              <div className="md:col-span-2 flex gap-3">
-                <button type="submit" className="frappe-button-primary flex-1">
-                  Save Deal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="frappe-button-secondary flex-1"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* Kanban Board */}
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading deals...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {dealsByStage.map(({ stage, deals: stageDeal, total }) => (
-              <div key={stage} className="frappe-card p-4">
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">{stage}</h3>
-                    <span className="text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                      {stageDeal.length}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{formatCurrency(total)}</p>
-                </div>
-
-                <div className="space-y-3">
-                  {stageDeal.length > 0 ? (
-                    stageDeal.map((deal) => (
-                      <div
-                        key={deal.id}
-                        className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium text-gray-900 dark:text-white text-sm flex-1">{deal.title}</h4>
-                          <div className="flex gap-1">
-                            <button className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors">
-                              <Edit2 className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteDeal(deal.id)}
-                              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                            >
-                              <Trash2 className="w-3 h-3 text-red-600 dark:text-red-400" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <p className="text-lg font-bold text-green-600 dark:text-green-400 mb-2">
-                          {formatCurrency(deal.value)}
-                        </p>
-
-                        <div className="flex items-center justify-between text-xs">
-                          <span className={`badge ${getStageColor(deal.stage)}`}>{deal.stage}</span>
-                          <span className="text-gray-600 dark:text-gray-400">{deal.probability}%</span>
-                        </div>
-
-                        {deal.expected_close_date && (
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
-                            Close: {new Date(deal.expected_close_date).toLocaleDateString('en-IN')}
-                          </p>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <p className="text-sm">No deals in this stage</p>
+              {stage.deals.length === 0 ? (
+                <p style={{ fontSize: '13px', color: '#7f8c8d', textAlign: 'center', padding: '20px 0' }}>
+                  No deals in this stage
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {stage.deals.map((deal) => (
+                    <div
+                      key={deal.id}
+                      style={{
+                        padding: '12px',
+                        backgroundColor: '#f8f9fa',
+                        borderRadius: '6px',
+                        borderLeft: `3px solid ${statusColors[stage.status]}`,
+                      }}
+                    >
+                      <p style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a2e', marginBottom: '4px' }}>
+                        {deal.title}
+                      </p>
+                      <p style={{ fontSize: '12px', color: '#ff8c00', fontWeight: '700' }}>
+                        ₹{(deal.amount / 100000).toFixed(1)}L
+                      </p>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

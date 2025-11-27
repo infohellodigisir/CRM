@@ -240,3 +240,43 @@ Learn more: https://nextjs.org/docs/messages/invalid-new-link-with-extra-anchor]
  ✓ Compiled /analytics in 64ms
  GET /analytics 200 in 275ms
  GET / 200 in 112ms
+ GET / 200 in 224ms
+ GET /contacts 200 in 124ms
+ ✓ Compiled in 103ms
+ ✓ Compiled in 25ms
+ ✓ Compiled / in 41ms
+ GET / 200 in 267ms
+ ✓ Compiled /contacts in 38ms
+ GET /contacts 200 in 116ms
+ GET / 200 in 122ms
+ GET / 200 in 112ms
+ GET /contacts 200 in 119ms
+ GET / 200 in 107ms
+ GET / 200 in 113ms
+ GET /contacts 200 in 132ms
+ GET / 200 in 100ms
+ GET / 200 in 118ms
+ GET /contacts 200 in 120ms
+ GET /contacts 200 in 105ms
+ GET /contacts 200 in 100ms
+ GET /contacts 200 in 93ms
+ ✓ Compiled in 162ms
+ GET / 200 in 599ms
+ GET /contacts 200 in 132ms
+ ✓ Compiled in 97ms
+ ⚠ Fast Refresh had to perform a full reload when ./app/contacts/page.tsx changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /contacts 200 in 566ms
+ GET /favicon.ico?favicon.bf3c9292.ico 200 in 272ms
+ ✓ Compiled in 102ms
+ ✓ Compiled in 92ms
+ GET / 200 in 218ms
+ ✓ Compiled /deals in 46ms
+ GET /deals 200 in 251ms
+ ✓ Compiled /tasks in 45ms
+ GET /tasks 200 in 246ms
+ ✓ Compiled /calls in 44ms
+ GET /calls 200 in 291ms
+ ✓ Compiled /notes in 66ms
+ GET /notes 200 in 270ms
+ ✓ Compiled /analytics in 51ms
+ GET /analytics 200 in 270ms
