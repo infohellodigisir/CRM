@@ -1,0 +1,57 @@
+
+> crm-app@0.1.0 dev
+> next dev --turbopack
+
+ ⚠ Found lockfile missing swc dependencies, patching...
+ ⚠ Port 3000 is in use by an unknown process, using available port 3001 instead.
+ ⚠ Lockfile was successfully patched, please run "npm install" to ensure @next/swc dependencies are downloaded
+   ▲ Next.js 15.5.6 (Turbopack)
+   - Local:        http://localhost:3001
+   - Network:      http://169.254.0.21:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1939ms
+ ○ Compiling / ...
+ ✓ Compiled / in 5.   Reload env: .env.local
+ET / 200 in 211ms
+ ⚠ Cross origin request detected from mighty-peas-lay.lindy.site to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 696ms
+ GET /favicon.ico?favicon.bf3c9292.ico 200 in 1072ms
+ ○ Compiling /deals ...
+ ✓ Compiled /deals in 572ms
+ GET /deals 200 in 748ms
+ ○ Compiling /contacts ...
+ ✓ Compiled /contacts in 739ms
+ GET /contacts 200 in 925ms
+ GET /contacts 200 in 854ms
+ GET /deals 200 in 167ms
+ ○ Compiling /calls ...
+ ✓ Compiled /calls in 574ms
+ GET /calls 200 in 662ms
+ ○ Compiling /tasks ...
+ ✓ Compiled /tasks in 582ms
+ GET /tasks 200 in 670ms
+ GET /deals 200 in 133ms
+ ○ Compiling /notes ...
+ ✓ Compiled /notes in 514ms
+ GET /notes 200 in 593ms
+ ○ Compiling /analytics ...
+ ✓ Compiled /analytics in 530ms
+ GET /analytics 200 in 626ms
+ GET /calls 200 in 123ms
+ GET /tasks 200 in 100ms
+ GET /notes 200 in 101ms
+ GET /analytics 200 in 112ms
+ GET / 200 in 208ms
+ GET / 200 in 191ms
+   Reload env: .env.local
+ ✓ Compiled in 1063ms
+ ✓ Compiled in 331ms
+ ✓ Compiled in 321ms
+ ✓ Compiled in 317ms
+ ✓ Compiled in 270ms
+ ✓ Compiled in 246ms
+ ✓ Compiled in 342ms
